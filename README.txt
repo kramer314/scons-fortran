@@ -3,11 +3,17 @@ See the LICENSE.txt file at the top-level directory of this distribution.
 
 Description
 ===========
-Configurable SCons build tool for Fortran projects. SCons does support Fortran,
-but documentation is currently somewhat lacking and some SCons behavior is
-slightly unexpected. This attempts to provide a general way to automatically
-build more complicated Fortran projects, as well as providing an example of how
-to use SCons and Fortran.
+Configurable SCons build approach for Fortran projects. SCons does support
+Fortran, but documentation is currently somewhat lacking and some SCons
+behavior with Fortran is slightly unexpected. This attempts to provide a
+general way to automatically build more complicated Fortran projects, as well
+as providing an example of how to use SCons with Fortran.
+
+This is designed to make very few assumptions about codebase structure or
+hierarchy; as long as some appropriate nesting of `SConscript` files can be
+used so that if SCons can understand the codebase, this should build it. It
+doesn't do more than that, but it's also not designed to be a replacement for
+a fully-fledged build system.
 
 Features
 ========
@@ -18,12 +24,17 @@ Features
 
 Work in Progress Features
 =========================
-* Automatic install / loading via `site_scons` directory
-* Install targets
-* Multiple source directory build (currently assumes all source files are
-  nested in on source file directory
-* Automatic dependency fetching (via Git) and building
-* Merging of default and custom JSON configuration files
+I'm looking into eventually adding the following (listed in order of priority):
+* Using the `site_scons` directory instead of providing a `SConstruct` file
+
+* Automatically merging default and custom JSON configuration files so custom
+configurations only have to specify what parameters differ from default values
+
+* Multiple source directory build support (this currently assumes all source
+files are nested in a single source directory)
+
+* Install targets (low priority, since distributing Fortran libraries is a
+*huge* mess absent submodules)
 
 Basic Usage
 ===========
@@ -32,7 +43,7 @@ Basic Usage
 distribution in the root directory of a project.
 
 * Create / edit a JSON configuration file (specification given below)
-describing the build (optional, see below).
+describing the build.
 
 * Build project using:
 
@@ -57,8 +68,9 @@ Top-level hash map structure
 ----------------------------
 
 debug :: toggle between debug (true) and production (false) compiler flags
-src_path :: path to source file directory
-build_path :: path to build directory; must be different than `src_path`
+src_path :: path to source file directory, where an `SConstruct` file is
+  present specifying how to handle building whatever that directory
+build_path :: path to build directory; *must* be different than `src_path`
 flags :: hash table containing compiler flag specification (see below)
 libs :: array containing external library specification (see below)
 lib_path_root :: root path for external libraries (see below)
@@ -119,3 +131,24 @@ Descriptions of each field are below:
   `path` :: path to library (see `use_root` below)
   `use_root` :: when true, `path` is relative to the top-level `lib_path_root`
     field, when false, `path` is treated as an absolute path
+
+Technical Notes
+===============
+
+This approach uses SCons's VariantDir functionality to duplicate the entire
+source tree into a separate build directory, and then builds within the
+duplicated source tree. The reason for this is due to a (apparent) limitation
+with VariantDir's treatment of Fortran modules without source tree duplication;
+compiler-generated module files must be present for things like libraries to
+function, but VariantDir (at least with SCons versions I've tested) doesn't
+move these to the separate build directory properly.
+
+Moreover, if we duplicate the entire source tree and build within that, SCons
+won't automatically cleanup the duplicated source files in the build directory.
+So, we manually define the entire build directory as a cleaning target. As a
+result, the source directory and build directory *must* differ.
+
+The main downside of this approach is that mirroring the entire source tree is
+not an ideal solution for very large, monolithic codebases. That said, disk
+space is cheap and only the initial build mirrors the entire source tree (after
+that, only incremental updates are made as source files change).
