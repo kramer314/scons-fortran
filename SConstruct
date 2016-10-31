@@ -1,9 +1,12 @@
 # Copyright (c) 2016 Alex Kramer <kramer.alex.kramer@gmail.com>
 # See the LICENSE.txt file at the top-level directory of this distribution.
 
-# Flag to specify custom build configuration
-AddOption("--config-json", dest="config_json_fname", default="./config_json.default")
+# Name of default JSON configuration file; set to None to force manual
+# configuration
+default_config_fname = "./config_json.default"
 
+# Flag to specify custom build configuration
+AddOption("--config-json", dest="custom_json_fname", default=default_config_fname)
 
 # Standard library imports
 import os
@@ -16,10 +19,23 @@ def abspath(path):
 
 
 # Parse build configuration from JSON
-config_json_fname = GetOption("config_json_fname")
-config_json_f = open(config_json_fname, "r")
-config_json = json.load(config_json_f)
-config_json_f.close()
+custom_json_fname = GetOption("custom_json_fname")
+if custom_json_fname is None:
+  raise ValueError("JSON configuration file specification required.")
+
+custom_json_f = open(custom_json_fname, "r")
+custom_json = json.load(custom_json_f)
+custom_json_f.close()
+
+# Merge custom and default configurations
+default_json = dict()
+if default_config_fname is not None and default_config_fname != custom_json_fname:
+  default_json_f = open(default_json_fname, "r")
+  default_json = json.load(default_json_f)
+  default_json_f.close()
+
+config_json = default_json.copy()
+config_json.update(custom_json)
 
 
 # Extract source and build directories

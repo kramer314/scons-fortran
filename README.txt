@@ -27,9 +27,6 @@ Work in Progress Features
 I'm looking into eventually adding the following (listed in order of priority):
 * Using the `site_scons` directory instead of providing a `SConstruct` file
 
-* Automatically merging default and custom JSON configuration files so custom
-configurations only have to specify what parameters differ from default values
-
 * Multiple source directory build support (this currently assumes all source
 files are nested in a single source directory)
 
